@@ -1,5 +1,5 @@
 import adafruit_imageload
-from math import floor
+from time import time
 class Image:
     # Bitmap image that can be passed to the screen display stuff
     def __init__(self, file, size_x, size_y):
@@ -28,7 +28,6 @@ class DisplayButton:
         screen.fill_rect(self.position -1, 51, 60, 11, do_fill)
         x_pos = self.position + 60//len(self.text) # Center it nicely :)
         screen.text(self.text, x_pos, 53, not do_fill)
-        
 
 class Screen:
     def __init__(self, screen_obj, left_button, right_button):
@@ -50,12 +49,7 @@ class Screen:
     def draw_buttons(self):
         self.left_button.draw(False, self.screen)
         self.right_button.draw(False, self.screen)
-    def do_blink(self, blink_state):
-        if self.blink_left:
-            self.left_button.draw(blink_state, self.screen)
-        if self.blink_right:
-            self.right_button.draw(blink_state, self.screen)
-        self.screen.show()
+
     def left_action(self): # what to do when the left button is pressed, default scroll
         self.blink_left = not self.blink_left
     def right_action(self): # what to do when the right button is pressed, default scroll
@@ -63,7 +57,9 @@ class Screen:
     def draw(self):
         # Draw the content to the screen. changes per screen
         pass
-
+    def cover_contents(self):
+        self.screen.fill_rect(2,2,124,44,0)
+        self.screen.show()
 
 class MainScreen(Screen):
     # Default screen, doesn't do a whole bunch
@@ -89,37 +85,41 @@ class StreamRunning(Screen):
 class CountScreen(Screen):
     # Parent class for countdown screens
     def __init__(self, screen_obj, text):
+        self.time_result = 0
         self.query_text = "Really " + text + "?"
-        self.confirm_count = 10
         self.count_running = False
+        self.count_time = time()
+        self.end_time = 0
         self.left_button = DisplayButton("Cancel", "left")
         self.right_button = DisplayButton("Confirm", "right")
         super().__init__(screen_obj, self.left_button, self.right_button)
     
-    def start_countdown(self):
-        self.confirm_count = 10
-        self.left_button.blink = True
-        self.right_button.blink = True
+    def start_countdown(self, wait = 10):
+        self.count_time = time()
+        self.end_time = self.count_time + wait
         self.count_running = True
-
-    def increment_count(self):
-        if self.count_running:
-            if self.confirm_count >= 0:
-                self.confirm_count -= 1 # Decrement the counter
-                self.draw()
-                return False
-            else: #cancel the countdown
-                return True
-    def draw(self):
+        self.count_state = 0
+        self.cover_contents()
         center = 2 + 124//len(self.query_text)
         self.screen.text(self.query_text, center,7,1)
-        self.screen.rect(4,29,120,16,1)
-        self.screen.fill_rect(4,29,(12 *  (10 - self.confirm_count)),16,1)
+        self.screen.fill_rect(4,29,120,16,1)
         self.screen.show()
+        self.time_result = 0
+
+    
+    def draw(self):
+        remaining = self.end_time - time()
+        if remaining >0:
+            self.screen.fill_rect(4,29,120 - (12 * remaining), 16 ,0)
+            self.screen.show()
+        else:
+            self.time_result = 1
+    def left_action(self):
+        self.time_result = 1
+    def right_action(self):
+        self.time_result = 2
 
 class StreamPaused(Screen):
-    pass
-
-
-
-
+    def __init__(self, screen_obj):
+        super().__init__(screen_obj, "Resume", "End")
+        # display a lil animation? 
