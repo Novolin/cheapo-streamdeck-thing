@@ -190,31 +190,16 @@ async def process_events():
         while len(eventStack) > 0:
             next_event = eventStack.pop()
             next_event.fire()
-        await asyncio.sleep(0)
+        await asyncio.sleep(5)
 
-# Tick blink/logic clock
+# blink the lights. 
 async def blink():
-    # blink lights, also general timer stuff
+    # blink lights
     global blink_state
     global screen # let me access the screen from here
     while True:
         blink_state = not blink_state
-        # Check timers every other blink period
-        if blink_state:
-            if stream.running:
-                stream.tick() 
-            # Check countdown screens:
-            if stream.wait_for_response: # If the stream is waiting for a countdown:
-                remaining = stream.screen.end_time - time.time()
-                if remaining > 0:
-                    stream.screen.draw()
-                    stream.response_value = stream.screen.time_result
-                else:
-                    # Time's up! end the timer
-                    stream.response_value = 1
-                    stream.do_response()
-            
-            
+ 
         # handle mute/brb lights. these are very quick so don't bother with anything else.
         if stream.mute:
             light_list[1].set(blink_state)
@@ -236,6 +221,11 @@ async def refresh_screen():
             stream.screen.needs_refresh = False
         await asyncio.sleep_ms(50)
 
+
+async def check_stream_status():
+    # checks if the stream is running, or has any tasks/state changes
+    while True:
+        await asyncio.sleep_ms(100)
 
 async def main():
     while True:
